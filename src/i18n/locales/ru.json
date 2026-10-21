@@ -3063,5 +3063,9 @@
   "Your choice applies now, but could not be saved.": "Ваш выбор применён, но сохранить его не удалось.",
   "Voice replies appear here.": "Здесь появляются голосовые ответы.",
   "Preview is off.": "Предпросмотр отключён.",
-  "Automatic stop is unavailable for this voice connection.": "Автоматическая остановка недоступна для этого голосового подключения."
+  "Automatic stop is unavailable for this voice connection.": "Автоматическая остановка недоступна для этого голосового подключения.",
+  "Clean view: hide the controls": "Чистый вид: скрыть элементы управления",
+  "Exit clean view: show the controls": "Выйти из чистого вида: показать элементы управления",
+  "Clean view: hide the controls (V)": "Чистый вид: скрыть элементы управления (V)",
+  "{label} (V)": "{label} (V)"
 }
