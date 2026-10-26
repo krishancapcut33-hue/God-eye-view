@@ -32,15 +32,17 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     .digest('hex');
   assert.equal(
     digest,
-    // Re-derived for the voice layer manifest (generated layer enums and
+    // Re-derived for Provider Settings and explicit Visual Presets/Scenes routing,
+    // plus the deliberate direct Panel tool/target additions and voice layer manifest (generated layer enums and
     // aliases), point-and-ask (pointer sentinels, referent args) and the
     // consolidated tool wording (each policy stated once); model-facing tools
     // omit top-level anyOf (OpenAI rejects it). Contacts list routing preserves
     // requested radius and center authority in descriptions only.
     // Street Level, GNSS and air quality (ECCC AQHI) extend the manifest;
     // tracked and analyst aircraft describe broadcasts; globe rotation adds
-    // one motion; show_street_level (map, source, photo) is the only change
-    // on top of main.
+    // one motion; S2 GhostMaps and the voice panel (named targets, timeout)
+    // follow; show_street_level (map, source, photo) is the only change on
+    // top of main.
     SHOW_STREET_LEVEL_PAYLOAD_DIGEST,
   );
   // Every shipped tool is byte-identical to the previous release: the new
@@ -59,12 +61,12 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     .digest('hex');
   assert.equal(
     shipped,
-    '967b5a043b812e2f8c1e190fc571cf12b960c9d4486df736902221aab4d99cf6',
+    '9ee82c4214499280c208c93751b19d7b724c81b7727a2d0c6dab0184749fbe15',
   );
 });
 
 const SHOW_STREET_LEVEL_PAYLOAD_DIGEST =
-  '5730cd99966a696771b62edb8b29e7a84cda685958a14889e84a0a93f7653ce3';
+  '3560c397b90af12ab5f4da8303810bed7ffda573f7cb7382af6af49598ea569f';
 
 test('descriptions customize wording without changing immutable shared arguments', () => {
   const descriptions = {
@@ -121,14 +123,18 @@ test('metadata cannot add tools, fields, types or enum values', () => {
 test('all legacy action arguments are byte-identical after removing the deliberate additions', () => {
   const legacy = structuredClone(GEV_ACTION_SCHEMAS).filter(
     (tool) =>
-      !['next_satellite_pass', 'set_cyber_sonar', 'show_street_level'].includes(
-        tool.name,
-      ),
+      ![
+        'next_satellite_pass',
+        'set_cyber_sonar',
+        'set_voice_inactivity_timeout',
+        'show_street_level',
+      ].includes(tool.name),
   );
   // Layer enums are generated from the voice layer manifest and pinned by
   // layerManifest.test.mjs; the two shipped right-rail panels are additive.
   const property = (name) =>
     legacy.find((tool) => tool.name === name).parameters.properties;
+  delete property('control_cockpit').voicePanel;
   delete property('set_layer_visibility').layerId.enum;
   delete property('show_data_layers_menu').layerId.enum;
   delete property('get_entity_context').layerId.enum;
@@ -146,7 +152,14 @@ test('all legacy action arguments are byte-identical after removing the delibera
   motion.enum = motion.enum.filter((value) => value !== 'rotate_globe');
   const panels = property('set_panel_open').panelId;
   panels.enum = panels.enum.filter(
-    (id) => !['weather-panel', 'recent-imagery-panel'].includes(id),
+    (id) =>
+      ![
+        'weather-panel',
+        'recent-imagery-panel',
+        'voice-settings',
+        'voice-preview',
+        'provider-settings',
+      ].includes(id),
   );
   for (const tool of legacy) {
     // Point-and-ask adds `referent` arguments and 'pointer' enum values.
@@ -250,4 +263,14 @@ test('globe reset guidance requires a separate explicit command after refusal', 
   assert.match(paragraph, /never from your own plan/);
   assert.match(paragraph, /bare yes\/ok/);
   assert.match(paragraph, /Do not ask a question/);
+});
+
+test('direct voice timeout schema accepts None and exact integers, rejects malformed duration', () => {
+  const tool = GEV_REALTIME_TOOLS.find(
+    (tool) => tool.name === 'set_voice_inactivity_timeout',
+  );
+  for (const minutes of [0, 1, 5, 60])
+    assert.equal(validateArgs(tool.parameters, { minutes }).length, 0);
+  for (const minutes of [-1, 61, 1.5, '5'])
+    assert.ok(validateArgs(tool.parameters, { minutes }).length > 0);
 });
