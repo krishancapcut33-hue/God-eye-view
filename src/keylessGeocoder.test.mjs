@@ -30,6 +30,7 @@ import {
   photonResultTypes,
   photonSearchUrl,
   selectPhotonFeature,
+  selectQualifiedFeature,
 } from './keylessGeocoder.js';
 import { geocodeNavigationMode } from './locations.js';
 
@@ -288,6 +289,52 @@ test('a "place, region" query is matched on the place, not the region', async ()
   assert.equal(result.label.startsWith('Hoàn Kiếm Lake'), true, `got ${result.label}`);
 });
 
+/** Photon's real answers for "Paris, Texas" biased to Denver, then unbiased. */
+const PARIS_TX = {
+  geometry: { type: 'Point', coordinates: [-95.5555, 33.6609] },
+  properties: { osm_key: 'place', osm_value: 'town', type: 'city', name: 'Paris', state: 'Texas', country: 'United States', countrycode: 'US' },
+};
+const PARIS_TEXAS_PUB = {
+  geometry: { type: 'Point', coordinates: [19.0606, 47.4868] },
+  properties: { osm_key: 'amenity', osm_value: 'pub', type: 'house', name: 'Paris, Texas', city: 'Budapest', country: 'Magyarország', countrycode: 'HU' },
+};
+const PARIS_TEXAS_SALON = {
+  geometry: { type: 'Point', coordinates: [153.03, -27.47] },
+  properties: { osm_key: 'shop', osm_value: 'hairdresser', type: 'house', name: 'Paris Texas', city: 'Brisbane', state: 'Queensland', country: 'Australia', countrycode: 'AU' },
+};
+
+test('"Paris, Texas" is the town in Texas, not a pub of that name in Budapest', async () => {
+  // Measured from Denver against the live service: the biased answer listed the
+  // town first, but the pub's name equals the whole query and won, flying the
+  // camera to Budapest at rooftop range.
+  const fetchImpl = photonPair([PARIS_TX, PARIS_TEXAS_PUB, PARIS_TEXAS_SALON], [PARIS_TX]);
+
+  const result = await geocodeKeyless('Paris, Texas', { bias: '39.70,-104.90|39.80,-104.80', fetchImpl });
+
+  assert.equal(Math.round(result.lat), 34, `got ${result.label}`);
+  assert.equal(fetchImpl.urls.length, 1);
+});
+
+test('a region is checked against where a candidate is, not its name', () => {
+  const pubFirst = [PARIS_TEXAS_PUB, PARIS_TEXAS_SALON, PARIS_TX];
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris, Texas'), PARIS_TX);
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris, United States'), PARIS_TX);
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris, US'), PARIS_TX);
+  // No region, or a region nothing lies in, leaves the choice to the name rules.
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris'), null);
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris, Ontario'), null);
+  assert.equal(selectQualifiedFeature(undefined, 'Paris, Texas'), null);
+});
+
+test('a region nearby fits nothing, so the unbiased answer decides', async () => {
+  const fetchImpl = photonPair([PARIS_TEXAS_PUB], [PARIS_TX, PARIS_TEXAS_PUB]);
+
+  const result = await geocodeKeyless('Paris, Texas', { bias: '47.40,19.00|47.50,19.10', fetchImpl });
+
+  assert.equal(Math.round(result.lat), 34, `got ${result.label}`);
+  assert.equal(fetchImpl.urls.length, 2);
+});
+
 test('accents and punctuation do not change what a name compares as', () => {
   assert.equal(normalizeToponym('Huế'), 'hue');
   assert.equal(normalizeToponym('Hạ Long Bay'), 'ha long bay');
@@ -453,6 +500,90 @@ function readGeocodingConsumer(file) {
   return files.map((name) => fs.readFileSync(path.join(ROOT, 'src', name), 'utf8')).join('\n');
 }
 
+test('"USA" and "UK" name their countries, and a trailing comma keeps the nearby answer', async () => {
+  const pubFirst = [PARIS_TEXAS_PUB, PARIS_TX];
+  assert.equal(selectQualifiedFeature(pubFirst, 'Paris, Texas, USA'), PARIS_TX);
+  // "Paris," names no region: the camera-biased pass still answers.
+  const fetchImpl = photonPair([PARIS_TX], []);
+  const result = await geocodeKeyless('Paris,', {
+    bias: '33.60,-95.60|33.70,-95.50',
+    fetchImpl,
+  });
+  assert.equal(Math.round(result.lat), 34, `got ${result.label}`);
+  assert.equal(fetchImpl.urls.length, 1);
+});
+
+test('a region match takes the place itself, not a place whose name starts with it', () => {
+  const station = {
+    geometry: { type: 'Point', coordinates: [4.86, 45.76] },
+    properties: {
+      osm_key: 'railway',
+      name: 'Paris Gare de Lyon',
+      city: 'Lyon',
+      country: 'France',
+      countrycode: 'FR',
+    },
+  };
+  const paris = {
+    geometry: { type: 'Point', coordinates: [2.35, 48.86] },
+    properties: {
+      osm_key: 'place',
+      name: 'Paris',
+      state: 'Île-de-France',
+      country: 'France',
+      countrycode: 'FR',
+    },
+  };
+  assert.equal(selectQualifiedFeature([station, paris], 'Paris, France'), paris);
+  assert.equal(selectQualifiedFeature([station], 'Paris, France'), null);
+});
+
+test('"UK" names the United Kingdom', () => {
+  const london = {
+    geometry: { type: 'Point', coordinates: [-0.13, 51.51] },
+    properties: {
+      osm_key: 'place',
+      name: 'London',
+      country: 'United Kingdom',
+      countrycode: 'GB',
+    },
+  };
+  const ontario = {
+    geometry: { type: 'Point', coordinates: [-81.25, 42.98] },
+    properties: {
+      osm_key: 'place',
+      name: 'London',
+      state: 'Ontario',
+      country: 'Canada',
+      countrycode: 'CA',
+    },
+  };
+  assert.equal(selectQualifiedFeature([ontario, london], 'London, UK'), london);
+});
+
+test('a nearby place whose own name has a comma still wins when nothing matches as place and region', async () => {
+  const store = (lon, lat, city) => ({
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+    properties: {
+      osm_key: 'shop',
+      osm_value: 'houseware',
+      name: 'Bed, Bath & Beyond',
+      city,
+      countrycode: 'US',
+    },
+  });
+  const nearby = store(-104.94, 39.66, 'Denver');
+  const fetchImpl = photonPair([nearby], [store(-73.99, 40.74, 'New York')]);
+
+  const result = await geocodeKeyless('Bed, Bath & Beyond', {
+    bias: '39.60,-105.00|39.70,-104.90',
+    fetchImpl,
+  });
+
+  assert.match(result.label, /Denver/);
+  assert.equal(fetchImpl.urls.length, 2, 'the region checks ran first');
+});
+
 
 test('wrapped view bias stays near the antimeridian and malformed coordinates are omitted', () => {
   for (const [bias, expected] of [['-20,170|-10,-171', 179.5], ['50,175|60,-165', -175], ['0,180|10,-180', 180], ['0,-180|10,180', 0]]) {
@@ -462,4 +593,31 @@ test('wrapped view bias stays near the antimeridian and malformed coordinates ar
   for (const bias of ['-91,0|0,1', '0,181|1,0', '10,0|0,1', ',|,', '0,1,2|3,4', '0,1|Infinity,2']) {
     assert.equal(new URL(photonSearchUrl('island', { bias })).searchParams.has('lon'), false);
   }
+});
+
+test('the nearby whole-name fallback takes an exact name, not one that only starts with the query', async () => {
+  const place = (name, lon, lat, props) => ({
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+    properties: { osm_key: 'place', name, ...props },
+  });
+  const nearby = [
+    place('Springfield IL Auto', -89.6, 39.8, {
+      osm_key: 'shop',
+      city: 'Springfield',
+      state: 'Illinois',
+      countrycode: 'US',
+    }),
+  ];
+  const anywhere = [
+    place('Springfield', -89.65, 39.78, { state: 'Illinois', countrycode: 'US' }),
+  ];
+  const fetchImpl = photonPair(nearby, anywhere);
+
+  const result = await geocodeKeyless('Springfield, IL', {
+    bias: '39.70,-89.70|39.90,-89.50',
+    fetchImpl,
+  });
+
+  assert.doesNotMatch(result.label, /Auto/);
+  assert.match(result.label, /^Springfield/);
 });
