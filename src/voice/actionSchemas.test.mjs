@@ -47,9 +47,10 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     // is consolidated without changing either feature's arguments.
     // The five C3 data-source layers extend the voice layer manifest too, so the
     // generated layer enums and aliases change further: the pin moves with them.
-    // The Velib' stations layer extends the manifest once more; the pin moves
-    // with it, and the guardrail stays.
-    'b225184796a401a701f74648a71531399b76c647994b829cec24e9a082e53fa8',
+    // The SNCF Stations and Velib' Stations layers were folded into the
+    // pre-existing Transit and Bike Share rows, so the manifest lost two
+    // entries: the pin moves with the manifest, and the guardrail stays.
+    '10df6e29d05f89c0269814c4cbd424651ccdb3ccacef31c8cd59ffcb1eb1ccde',
   );
 });
 
