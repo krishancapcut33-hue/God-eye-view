@@ -327,7 +327,14 @@
       "src/data/local_data/natural_earth/regions.json",
       "src/data/naturalEarthRegions.js",
       "src/data/bundledJson.js",
-      "src/data/retryableLoad.js"
+      "src/data/retryableLoad.js",
+      "server/providers/common/same-site.js",
+      "server/providers/common/source-root.js",
+      "server/providers/regional/nominatimGate.js",
+      "server/providers/regional/nominatimCache.js",
+      "server/providers/regional/outlineSelect.js",
+      "src/localRequestGate.mjs",
+      "src/data/adminBoundaries.js"
     ],
     "external": []
   },
@@ -2599,7 +2606,13 @@
       "src/voice/geminiCaptureWorklet.js",
       "src/ui/statusBadge.js",
       "src/sceneCommandRelease.js",
-      "src/scopeMaskPolicy.js"
+      "src/scopeMaskPolicy.js",
+      "src/annotations/outlineRungs.js",
+      "src/sources/openFreeMapOutlines.js",
+      "src/sources/nominatimOutlines.js",
+      "src/data/placeBoundaries.js",
+      "src/data/local_data/us_census_places/files.js",
+      "src/data/local_data/wof_neighborhoods/files.js"
     ],
     "external": [
       "hls.js",
@@ -3176,7 +3189,13 @@
       "src/layers/streetLevel/providers/mapillary/policy.js",
       "src/data/geoImportImages.js",
       "src/data/geoImportPins.js",
-      "src/data/geoFileImport.js"
+      "src/data/geoFileImport.js",
+      "src/annotations/outlineRungs.js",
+      "src/sources/openFreeMapOutlines.js",
+      "src/sources/nominatimOutlines.js",
+      "src/data/placeBoundaries.js",
+      "src/data/local_data/us_census_places/files.js",
+      "src/data/local_data/wof_neighborhoods/files.js"
     ],
     "external": [
       "hls.js",
@@ -3246,7 +3265,19 @@
       "src/sources/featureSource.js",
       "src/sources/capability.js",
       "src/data/cameraArrival.js",
-      "src/data/cameraFraming.js"
+      "src/data/cameraFraming.js",
+      "src/sources/openFreeMap.js",
+      "src/sources/vectorTiles.js",
+      "src/sources/phaseTiming.js",
+      "src/sources/militaryTileGeometry.js",
+      "src/data/tomtomTiles.js",
+      "src/data/installationNames.js",
+      "src/annotations/outlineRungs.js",
+      "src/sources/openFreeMapOutlines.js",
+      "src/sources/nominatimOutlines.js",
+      "src/data/placeBoundaries.js",
+      "src/data/local_data/us_census_places/files.js",
+      "src/data/local_data/wof_neighborhoods/files.js"
     ],
     "external": [
       "cesium",
