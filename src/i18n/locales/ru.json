@@ -3070,5 +3070,10 @@
   "Your choice applies now, but could not be saved.": "Ваш выбор применён, но сохранить его не удалось.",
   "Voice replies appear here.": "Здесь появляются голосовые ответы.",
   "Preview is off.": "Предпросмотр отключён.",
-  "Automatic stop is unavailable for this voice connection.": "Автоматическая остановка недоступна для этого голосового подключения."
+  "Automatic stop is unavailable for this voice connection.": "Автоматическая остановка недоступна для этого голосового подключения.",
+  "USGS Rivers & Streams": "USGS: реки и ручьи",
+  "USGS Lakes & Reservoirs": "USGS: озёра и водохранилища",
+  "USGS Springs": "USGS: родники",
+  "Water": "Вода",
+  "Zoom in to a region to load river gauges": "Приблизьте регион, чтобы загрузить речные датчики"
 }
